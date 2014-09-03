@@ -1,0 +1,258 @@
+\documentclass[a4paper,icelandic]{article}
+
+%% Use utf-8 encoding for foreign characters
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{babel}
+
+%% More symbols
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+%% Theorem
+\usepackage{amsthm}
+\theoremstyle{default}
+\newtheorem{setn}{Setning}[section]
+\theoremstyle{definition}
+\newtheorem{skilgr}{Skilgreining}[section]
+\theoremstyle{remark}
+\newtheorem*{ath}{Athugasemd}
+
+%% Kóði
+\usepackage[scaled]{beramono}
+\usepackage{listings}
+\usepackage{listingsutf8}
+\lstset{basicstyle=\footnotesize\ttfamily,
+        breaklines=true,
+        frame=single,
+        inputencoding=utf8/latin1}
+
+\title{%
+\textbf{Greining reiknirita}\\
+Verkefni 2\\
+\emph{Kvik Huffman kóðun}}
+\author{Hörður Freyr Yngvason}
+
+\begin{document}
+\maketitle
+
+\section{Inngangur}
+% Lýsum vandamáli sem við hyggjumst leysa
+% Kynnum tvær tillögur að lausn í grófum dráttum
+%  * þekkt viðmiðunarlausn
+%  * ný lausn, hugsanlega betri en viðmiðunarlausnin
+Segjum sem svo, að við viljum senda stafræn gögn yfir tengingu með
+takmarkaða bandbreidd. Við viljum vitaskuld lágmarka flutningstímann,
+sem jafngildir því að senda gögnin í eins fáum bitum og
+unnt er. M.ö.o. viljum við \emph{þjappa} gögnunum á sem hagvkæmastan
+hátt.
+
+Ein vel þekkt þjöppunaraðferð er (upprunalega) \emph{kyrrlega
+Huffman-kóðunin} \cite{mitAlgo}. Þar lítum við á skrá sem streng yfir
+stafróf
+ólíku stafanna í skránni, greinum tíðni hvers stafs og þjöppum
+byggt á þeim upplýsingum. Farnar eru tvær umferðir
+gegnum skrána. 
+Fyrri umferðin fer í tíðnigreiningu, sem er notuð til að smíða svokallað
+\emph{Huffman-tré} fyrir gögnin. Huffman-tréð má nota til að búa til
+\emph{prefix-kóða} stafrófsins og lesa úr þjöppuninni.
+Seinni umferðin fer í að þjappa gögnunum. 
+Þessi aðferð hentar þó ekki fyrir allar gagnagerðir: Reikniritið krefst
+þess að sjá öll gögnin áður en nokkru er þjappað, sem gengur ekki fyrir
+gögn enn í smíði, t.d. beina útsendingu, þar sem næstu stafir eru
+óþekktir. Í því tilfelli getum við valið um að seinka
+útsendingunni og þjappa skránni í bútum, eða hverfa frá því að nota
+kyrrlegu Huffman kóðunina. Einnig þarf að senda Huffman-tréð með boðunum
+svo hægt sé að lesa þau.
+
+Oft má gera betur; nefnilega, með því að fara aðeins eina umferð í
+gegnum skrána og þjappa jafnóðum, getum við lágmarkað biðtíma og e.t.v.
+þjappað gögnunum hraðar. Ein slík aðferð byggir á Huffman-kóðun, köllum
+hana \emph{kvika Huffman-kóðun} \cite{vitter87}. Hugmyndin er að á meðan
+þjöppun standi geymi sendandi og viðtakandi báðir eintak af sama
+Huffman-trénu. Tréð sé Huffman-tré fyrir þann hluta gagnanna, sem búið
+er að senda. Þá er næsta staf þjappað samkvæmt kóðun þessa trés hjá
+sendanda og viðtakandi notar sitt tré til að endurheimta stafinn. Síðan
+uppfæra báðir aðilar trén sín til að endurspegla breytt ástand
+skilaboðanna, þ.a. báðir hafi enn sama tréð. Með þessu móti er aðeins
+farin ein ferð um gögnin og þurfum ekki að senda tréð sérstaklega.
+Meðal útfærsla á þessari hugmynd eru \emph{reiknirit FGK} (Faller,
+Gallager, Knuth) \cite{knuth85}, síðar endurbætt af \emph{reikniriti
+Vitter} \cite{vitter89}.
+
+Í næsta hluta skoðum við þessar hugmyndir formlega, berum þær saman
+og útskýrum í hvaða skilningi hvor fyrir sig er \emph{ákjósanleg}. Í
+hluta \ref{sec:maelingar} birtum við niðurstöður samanburðar á
+upphaflegu kyrrlegu Huffman-kóðuninni og kviku Huffman-kóðun Vitters
+fyrir ýmis gögn. Öll forrit eru gefin í heild sinni aftast.
+
+
+
+\section{Kyrrleg og kvik Huffman-kóðun}
+
+Byrjum á að samræma rithátt fyrir þennan hluta
+Látum $n$ vera stærð stafrófsins og $a_j$ vera $j$-ta staf þess,
+$j=1\dots,n$. Látum $t$ vera fjölda stafa úr skilaboðunum, sem búið er
+að vinna með, látum $M_t := (a_{i_j})_{j=1}^{j=t}$ vera runu
+þeirra og $k$ vera fjölda ólíkra stafa í $M_t$. Fyrir öll $a_j$
+látum við svo $w_j$ vera tíðni (þyngd) $a_j$  í $M_t$ og
+$l_j$ vera fjarlægð laufs $a_j$ frá rót Huffman-trés $M_t$.
+Köllum bitafjölda þjöppunar $M_t$ \emph{kostnað}
+boðanna.
+
+\subsection{Kyrrleg Huffman-kóðun}
+Í fyrri umferð reikniritsins úthlutum við $k$ ólíku stökunum 
+$a_j\in M_t$ hnút með gildið $a_j$ og þyngd $w_j$; setjum
+hnútana í forgangsbiðröð $Q$ þannig að léttustu stökin fái hæstan
+forgang. Þar til $Q$ inniheldur aðeins eitt stak, fjarlægjum við
+ítrekað tvo léttustu hnútana $x$ og $y$ úr $Q$ og setjum í staðinn hnút
+$z$, sem hefur $x$ og $y$ sem börn og samanlagaða þyngd þeirra. Þá
+verður eina stakið eftir í $Q$ rót Huffman-trés fyrir $M_t$. Kóðunin
+fyrir staf $a_j$ fæst þá með því að rekja sig frá rót niður í $a_j$
+þannig að fyrir hverja stiku bætum við $0$ aftan á kóðann ef stikan er
+til vinstri, en $1$ annars. 
+
+Þau tré, sem fengist geta á þennan hátt (fyrir eitthvert mál)
+kallast \emph{Huffman-tré}. Almennt, ef við smíðum einhvern prefix-kóða
+fyrir stafina $a_j$ í $M_t$ og lítum á tilsvarandi tré, þá er stærðin 
+$\sum_{j} w_j l_j$ kostnaður skilaboðanna $M_t$. 
+Huffman-kóðun skilaboðanna er \emph{ákjósanleg}, í þeim skilningi að
+kostnaður kóðunarinnar er lágmarkaður yfir öll prefix-kóðunartré fyrir
+þetta sama stafróf.
+
+Keyrslutími útfærslunnar hér að aftan er
+$O(n\log(n))$, en með því að nota van Emde Boas tré á að vera hægt að ná
+honum niður í $O(n\log(\log(n)))$ \cite{mitAlgo}.
+
+\subsection{Kvik Huffman-kóðun}
+%Lýsa í skilgreindu táknmáli hugmyndinni sem við lýstum óformlega í innganginum.
+
+Í kvikri Huffman-kóðun notum við kvik Huffman-tré, þ.e. Huffman-tréð
+okkar breytist og lagar sig að skilaboðunum gegnum kóðunina.
+$(t+1)$-ti stafurinn, $a_{i_{t+1}}$, er kóðaður út frá Huffman-trénu
+fyrir $M_t$; sendandi og viðtakandi breyta síðan báðir Huffman-trénu
+sínu í samræmi við viðbótina þannig að báðir enda með sama Huffman-tréð
+fyrir $M_{t+1}$. Vandinn er þá fyrst og fremst að framkvæma þetta skref
+skilvirkt; sér í lagi þarf að tryggja að tréð sé enn Huffman-tré. Til
+þess notfærum við okkur \emph{systkinaeiginleika} Huffman-trjáa:
+Tvíundatré með þyngd $\ge 0$ og $p$ lauf er Huffman-tré \emph{þ.þ.a.a.}
+það uppfylli eftirfarandi tvö skilyrði \cite{vitter87}
+\begin{enumerate}
+  \item laufin $p$ hafa þyngdir $w_1,\dots,w_p\geq 0$ og þyngd innri
+    hnúts er summa barna hans;
+  \item unnt er að númera hnútana í vaxandi röð eftir þyngd, þannig að
+    hnútar $2j-1$ og $2j$ eru systkini, fyrir $j=1,\dots,p-1$, og
+    sameiginelga foreldri þeirra er af hærra númeri.
+\end{enumerate}
+Í þessu liggur kjarni reiknirits FGK, sem er síðan endurbættur í
+reikniriti Vitters: Við viljum framkvæma skrefið $H_t\mapsto H_{t+1}$,
+þar sem $H_i$ er Huffman-tré $M_i$. Framkvæmum eitt milliskref á $H_t$:
+Byrjum með hnút, sem er laufið fyrir $a_{i_{t+1}}$. Skiptum ítrekað á
+innihaldi hnútsins, þar með talið er undirtré hans, og innihaldi hæst
+númeraða hnútnum með sömu þyngd, skoðum svo í staðinn foreldri
+síðarnefnda hnútsins. Að þessu loknu verður $H_t$ enn Huffman-tré fyrir
+$M_t$ og við fáum $H_{t+1}$ með því að hækka þyngd laufs
+$a_{i_{t+1}}$ og forfeðra þess um $1$ (því við höfum varðveitt
+systkinaeiginleikann).
+
+Athugum sérstaklega tilfellið $k < n$, þ.e. þegar við höfum enn ekki séð
+allt stafrófið. Þá notum við einn $0$-hnút til að tákna þá $n-k$ stafi
+sem við eigum eftir að sjá. Ef $a_{i_{t+1}}$ er slíkur stafur, þ.e.
+$a_{i_{t+1}}\notin M_t$, þá kljúfum við $0$-hnútinn og smíðum úr öðrum
+hlutanum laufið fyrir $a_{i_{t+1}}$. Kóðinn sem við sendum fyrir
+$a_{i_{t+1}}$ er kóðinn frá rót niður í $0$-hnútinn, ásamt nokkrum
+aukabitum sem segja, hver $n-k$ ónotuðu stafanna var sendur.
+
+\subsubsection{Reiknirit Vitter}
+
+Reiknirit Vitters er svipað, nema hvað við númerum hnútana út frá
+myndframsetningu trésins, köllum það \emph{óbeina} númeringu: Hnútarnir
+eru númeraðir í vaxandi röð eftir dýpt, en hnútar af sömu dýpt eru
+númeraðir í vaxandi röð frá vinstri til hægri. Við viðhöldum þessari
+númeringu með sérstakri gagnagrind sem við köllum \emph{fleytitré} (e.
+floating tree). Við höfum jafnframt eftirfarandi fastayrðingu
+\begin{quote}
+  Látum $w$ vera þyngd í trénu. Þá eru öll lauf af þyngd $w$
+  á undan öllum innri hnútum af þyngd $w$ með tilliti til óbeinu
+  númeringarinnar.
+\end{quote}
+Sérhvert Huffman-tré sem uppfyllir þetta skilyrði lágmarkar bæði
+$\sum_{j} l_j$ og $\max_j\{l_j\}$. Að lokum, til að einfalda útfærslu,
+skilgreinum við:
+\begin{skilgr}
+  \emph{Kubbar} trésins (e. blocks) eru jafngildisflokkar venslanna
+  \begin{quote}
+    $x\equiv y$ e.f.f. $x$ og $y$ hafa sömu þyngd og eru báðir innri
+    hnútar eða báðir lauf.
+  \end{quote}
+  \emph{Leiðtogi} (e. leader) kubbs er sá hnútur kubbsins, sem hefur
+  hæstu óbeinu númeringuna.
+\end{skilgr}
+
+\subsection{Samanburður á aðferðunum}
+Erfitt er að fá áþreifanlegt mat á gæðum þjöppunarreiknirits út af fyrir
+sig, því vel má hugsa sér sérhæfð mynstur sem hægt er að þjappa mun
+betur en með Huffman-legri kóðun; t.d. er segðin
+\begin{quote}
+  fyrstu $10^6$ aukastafir $\pi$ í tugakerfi
+\end{quote}
+greinileg þjöppun á útlistun umræddra aukastafa á pappír. Við einskorðum
+okkur því hér við að meta kviku kóðunina út frá kyrrlegu kóðuninni.
+Táknum með $S_t$ kostnað kyrrlegu kóðunarinnar og látum $D_t$ standa
+fyrir kostnað kviku kóðunar Vitters (fyrir $M_t$). Nánar tiltekið er
+kostnaðurinn fjöldi bita, sem sendir eru, nema hvað
+\begin{itemize}
+  \item í kyrrlegu kóðuninni teljum við ekki með kostnaðinn við að senda
+    tréð,
+  \item í kviku kóðuninni teljum við ekki aukabitana sem sendir eru,
+    þegar við sjáum staf í fyrsta skipti.
+\end{itemize}
+Í grein sinni \cite{vitter87} sýndi Vitter fram á eftirfarandi
+meginskorður:
+\begin{setn}\label{setn:diff}
+  \begin{enumerate}
+    \item $S_t - k \leq D_t \leq S_t + t$
+    \item Reiknirit Vitter lágmarkar muninn $D_t - S_t$ yfir öll $M_t$
+      og öll (einnar umferðar) kvik Huffman-reiknirit. 
+  \end{enumerate}
+\end{setn}
+
+\section{Niðurstöður mælinga}\label{sec:maelingar}
+Mælingar aðallega gerðar á stafrófi af stærð 256.
+
+\section{Lokaorð}
+Taka saman lykilatriði í samanburðinum á aðferðunum.
+
+Athuga að kvika kóðunin er mjög veik fyrir gagnatapi.
+Athuga að fyrir kviku kóðunina þarf stafrófið að vera þekkt fyrir kóðun!
+Það er frekar stór krafa.
+
+\section*{Viðauki: Forritin sem notuð voru í mælingarnar}
+
+Huffman-kóðunin er útfærð með \cite{mitAlgo} til hliðsjónar.
+Keyrslutíminn ætti að vera $O(n\log n)$, en forritið er takmarkað við að
+gögnin komist fyrir í minninu. Reiknirit Vitters er útfært í klasanum
+FloatingTree og er svo gott sem Pascal$\to$C++ þýðing á \cite{vitter89}.
+Notkunin er 
+\begin{lstlisting}
+  ./huffman [t]
+  ./vitter [t]
+\end{lstlisting}
+þar sem \texttt{t} er fjöldi stafa í skránni (-1 og ekkert þýðir þjappa
+öllu); gögnin eru lesin af aðalinntaki.
+
+\lstinputlisting[language=C++,title=\lstname]{src/huffman.cpp}
+\lstinputlisting[language=C++,title=\lstname]{src/vitter.cpp}
+
+
+\begin{thebibliography}{9}
+  \bibitem{mitAlgo} Cormen, T.H; Leiserson, C.E; Rivest, R.L; Stein, C.
+    2009. Introduction to Algorithms, 3rd ed. 428-435.
+  \bibitem{knuth85} Knuth, D.E. 1985. „Dynamic Huffman coding“.
+    \emph{Journal of Algorithms 6}, 2, 163-180.
+ \bibitem{vitter87} Vitter, J.S. 1987. „Design and Analysis of Dynamic
+    Huffman Codes“. \emph{J. ACM 34}, 4, 825-845.
+  \bibitem{vitter89} Vitter, J.S. 1989. „Algorithm 673: Dynamic Huffman
+    Coding“.  \emph{ACM Trans. Math. Softw. 15}, 2, 158-167.
+\end{thebibliography}
+\end{document}
