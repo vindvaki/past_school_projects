@@ -1,0 +1,497 @@
+\documentclass[a4paper,icelandic]{article}
+
+%% Use utf-8 encoding for foreign characters
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{babel}
+
+%% Vector based fonts instead of bitmaps
+\usepackage{lmodern}
+
+%% Useful
+\usepackage{fullpage} % Smaller margins
+\usepackage{enumerate}
+\usepackage{verbatim}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{multirow}
+
+%% More math
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+%% Document Header
+\title{\textbf{Reiknigreind}\\Reikniverkefni 1}
+\author{Hörður Freyr Yngvason}
+\date{}
+
+\begin{document}
+\maketitle
+
+
+\section{Inngangur}
+
+Í verkefninu skoðum við \emph{back-propagation} á margra-laga tauganet
+fyrir flokkunarverkefni. Við höfum gefna útfærslu á slíku reikniriti,
+þar sem skekkjan er metin út frá 2-normi fjarlægðar frá réttum gildum, og
+viljum breyta kóðanum þannig að notast verði við \emph{cross-entropy}
+fyrir skekkjumat.
+
+Til að prófa útfærsluna höfum við síðan safn af 624 svarthvítum
+andlitsmyndum \cite{faces} sem unnt er að flokka á ýmsan hátt; t.d. eru 311 myndanna
+af viðfangsefni með sólgleraugu. Í seinni hluta verkefnisins reynum
+við að læra að flokka myndirnar með tauganeti af þessari gerð.
+
+
+\section{Fræðileg umgjörð}
+
+Táknum með $h:\mathbb R\to\mathbb R$ þjált einhalla vaxandi fall sem er
+takmarkað að ofan og neðan, köllum það \emph{yfirfærslufall}.  Við
+byrjum með með fjölskyldu para inntaks- og úttaksgilda $(x_i,t_i)$ og
+setjum upp endanlegt stefnt net hnúta $i$ með gildi $a_i$ og $z_i$, og
+leggja $ji \equiv i\to j$ með þyngdir $w_{ij}$, sem tengjast með formúlunum
+\[
+a_j = \sum_{i\to j} w_{ji} z_i
+\]
+og
+\[
+z_j = h(a_j),
+\]
+þar sem $i\to j$ þýðir að við höfum legg með þyngd $w_{ji}$ frá $i$ til
+$j$ (getum aldrei farið afturábak). Inntaksgildin $x_i$ eru einu gildin
+$z_i$ þannig að ekki er til tenging $j\to i$ og úttaksgildin eru þau
+gildi $y_k:=z_k$ þannig að ekki sé til tenging $k\to j$. Netið skiptist
+síðan upp í \emph{lög}, sem eru jafngildisflokkar hnútanna m.t.t. fjölda
+skrefa frá inntaki, og úttaksgildin $y_k$ þurfa öll að vera í sama
+laginu. Við viljum síðan lágmarka gefna skekkju $E(\mathbf w)$ með
+tilliti til þyngdanna $w_{ji}$ yfir öll hugsanleg inntaksgildi $x_i$ (en
+við látum okkur nægja að lágmarka fyrir úrtakið). 
+
+Nálgunin, sem tekin er í tauganetinu okkar, er að beita \emph{gradient
+descent}, til að finna staðbundið lággildi á $E$ m.t.t. $\mathbf w$ þar
+sem afleiðurnar $\partial E/\partial w_{ji}$ eru reiknaðar afturábak með
+\emph{back-propagation}: Skilgreinum hjálparstærðir 
+\[
+\delta_j :=  -\frac{\partial E}{\partial a_j}
+\]
+fyrir alla hnúta $j$. Gerum síðan ráð fyrir
+að við getum reiknað gildin $\delta_k$ fyrir alla úttakshnúta $k$.
+Af keðjureglunni fæst að 
+\[
+\frac{\partial E}{\partial w_{ji}}
+= \frac{\partial E}{\partial a_j}\frac{\partial a_j}{\partial w_{ji}}
+\]
+og með því að sjóða saman allt að ofan fæst
+\[
+\delta_i
+= - \frac{\partial E}{\partial a_j}
+= - \sum_{i\to j} \frac{\partial E}{\partial a_j} \frac{\partial a_j}{\partial a_i}
+= h'(a_i) \sum_{i\to j} w_{ji}\delta_j
+\]
+sem gefur okkur leið til að meta $\delta_i$ út frá öllum $\delta_j$ þannig að
+$i\to j$; þ.e.a.s. við getum metið skekkjuna á hverju lagi út frá
+skekkjunni á laginu fyrir ofan (þ.e. laginu sem er nær úttakinu).
+
+
+\section{Cross-entropy}
+
+Cross-entropy skekkjufallið er gefið með 
+\[
+E(\mathbf w) 
+= - \sum_k (t_k \log(y_k) + (1-t_k) \log(1-y_k)).
+\]
+Til að stinga þessu falli inn í \emph{back-propagation} reikniritið
+nægir okkur nú að reikna frumstillingarnar
+\[
+\delta_k
+= -\frac{\delta E}{\delta a_k};
+\]
+munum að $y_k = h(a_k)$ svo $\partial y_k / \partial a_k = h'(a_k)$ og
+fáum 
+\[
+\delta_k
+= \frac{\partial E}{\partial a_k}
+= \frac{t_k}{y_k}h'(a_k)
+- \frac{1-t_k}{1-y_k}h'(a_k)
+= h'(a_k)\frac{t_k - y_k}{y_k(1-y_k)}
+\]
+Í okkar tilfelli notum við \emph{logistic sigmoid} fallið
+\[
+h(x) := \frac{1}{1+e^{-x}}
+\]
+með 
+\[
+h'(x) = h(x)(1-h(x))
+\]
+svo að 
+\[
+\delta_k 
+= t_k - y_k.
+\]
+Breytt útgáfa af skjalinu \texttt{vbp.m}, sem notar cross-entropy
+reiknað á þennan hátt, er í viðauka.
+
+
+\subsection{XOR-prófið}
+
+Þekkt er að XOR-prófið er ekki línulega sundurgreinanlegt, svo það er
+tilvalið í að bera almenn tauganet saman við stakar taugar. Til að
+sannreyna að forritið virki enn eftir breytinguna má keyra kóðabútinn
+í viðauka \ref{sec:xor-test} á blaðsíðu \pageref{sec:xor-test}; dæmi um
+þróun skekkjunnar má sjá á mynd \ref{fig:xor-test}; þar fékkst
+útkomuvigurinn 
+\begin{verbatim}
+   0.0055121   0.9942149   0.9942143   0.0086114
+\end{verbatim}
+á móti réttu XOR-gildunum
+\begin{verbatim}
+   0   1   1   0
+\end{verbatim}
+á inntaksgildin
+\begin{verbatim}
+  (0,0)  (0,1)  (1,0)  (1,1)
+\end{verbatim}
+
+\begin{figure}[h]
+  \begin{center}
+    \includegraphics[width=\linewidth]{xor_example.pdf}
+  \end{center}
+  \caption{Skekkjan sem fall af fjölda ítrana í XOR-prófinu}
+  \label{fig:xor-test}
+\end{figure}
+
+
+\section{Myndgreining}
+
+Forritin fyrir þennan hluta voru skrifuð að mestu í C, örlítið í Octave
+og límt saman í Bash. Til að byrja með flokkum við myndirnar í forritunum með
+gildum úr $[0,1]$, þannig að 0 er nei og 1 er já fyrir gefinn flokk.
+
+\subsection{Að þekkja fólk með sólgleraugu}
+
+Munum að við höfum 624 myndir; þar af eru 311 með sólgleraugu og 313 án
+sólgleraugna. Við sjáum að fjöldi mynda í hverjum flokki m.t.t.
+sunglasses/open skiptingarinnar (tafla \ref{tab:sunglasses} bls.
+\pageref{tab:sunglasses}) er nokkuð
+jafn (gerum ráð fyrir að notandinn skipti ekki máli). Allt bendir því
+til að tauganetið fái jafna möguleika á því að læra hvern flokk.
+
+\begin{table}[h!]
+  \centering
+  \begin{tabular}{l|ll}
+    & sunglasses & open \\\hline\hline
+    straight & 78 & 78 \\
+    left & 78 & 79 \\
+    right & 78 & 77 \\
+    up & 77 & 79 \\
+    \hline
+    neutral & 78 & 80 \\
+    happy & 77 & 78 \\
+    sad & 78 & 78 \\
+    angry & 78 & 77 \\
+  \end{tabular}
+  \caption{Dreifing á sólgleraugum milli flokka}
+  \label{tab:sunglasses}
+\end{table}
+
+Þjálfum nú tauganetið við eftirfarandi skilyrði:
+\begin{itemize}
+  \item Inntak er myndir í lægstu upplausn, hæðin er $30$ punktar og
+    breiddin er $32$ punktar.
+  \item Úttakið er einn flokkur, þ.e. hvort einstaklingur er með
+    sólgleraugu
+  \item Eitt falið lag og með tveimur hnútum
+  \item 8000 ítranir, lærdómshraði $\eta = 0.1$ og skriðþungi
+    $\mu=0.3$.
+  \item Þjálfunargögnin eru um 70\% af inntakinu, þ.e. 437 myndir; hinar
+    187 eru notaðar í prófun.
+\end{itemize}
+
+\begin{figure}[h!]
+  \begin{center}
+    \includegraphics[width=\linewidth]{sunglasses-error.pdf}
+  \end{center}
+  \caption{Þjálfunar- (blá) og prófunarskekkjan (rauð) þegar við látum
+  netið læra að þekkja flokkana \emph{sunglasses} og \emph{open} með
+  eitt tveggja-hnúta millilag, $\eta=0.1$ og $\mu=0.3$; 8000
+  umferðir. Skekkjan dettur í lokin niður í um $0.01$.
+  Sjáum auk þess að að prófunarskekkjan fer að vaxa upp úr
+  1000 ítrunum; það þýðir að netið fer að \emph{oflæra} gögnin upp úr
+  þeim fjölda ítrana.}
+  \label{fig:sunglasses-error}
+\end{figure}
+Hnútarnir í millilaginu virðast taka mjög svipuð gildi og
+úttakshnúturinn fyrir ekki-sólgleraugu, en úttaksgildin þjappast frekar
+upp að endapunktunum 0 og 1 í ákvörðunarbilinu $[0,1]$. Til dæmis fékkst
+fyrir millilagið (slembið prófunarúrtak) í sömu keyrslu og þeirri sem
+gaf mynd \ref{fig:sunglasses-weights}:
+\begin{verbatim}
+Node activations:   0.010169 0.008465 
+output activations: 0.998648 0.001352 
+Target activations: 1.000000 0.000000 
+
+Node activations:   0.014515 0.010832 
+output activations: 0.998579 0.001421 
+Target activations: 1.000000 0.000000 
+
+Node activations:   0.923234 0.936433 
+output activations: 0.000576 0.999425 
+Target activations: 0.000000 1.000000 
+\end{verbatim}
+
+\begin{figure}[h!]
+  \begin{center}
+    \includegraphics[width=0.25\linewidth,angle=-90]{sunglasses-w0.pdf}
+    \includegraphics[width=0.25\linewidth,angle=-90]{sunglasses-w1.pdf}
+  \end{center}
+  \caption{Þyngdirnar frá inntaki yfir á millilag (fyrri myndin er fyrri
+  línuvigurinn) þegar læra skal flokkana \emph{sunglasses} og
+  \emph{open}. Mjög dökkir litir svara til neikvæðra þyngda og ljósir
+  litir svara til jákvæðra þyngda, en meðalgráir litir eru líklega
+  þyngdir í grennd við 0. Veitum því sérstaklega athygli að sólgleraugun
+  fá ekkert frekar jaðarþyngdir (þ.e. hvít/svört gildi) en aðrir punktar; }
+  \label{fig:sunglasses-weights}
+\end{figure}
+
+Af grafinu í mynd \ref{fig:sunglasses-error} er nokkuð ljóst að við erum
+að \emph{oflæra} gögnin. Af þyngdunum á mynd
+\ref{fig:sunglasses-weights} sést að netið tekur greinilega tillit til
+fleiri atriða en sólgleraugna eingöngu. Prófum þess í stað að hætta
+eftir 1000 ítranir. Þróun villunar má þá sjá á mynd
+\ref{fig:sunglasses-error-1} og tilheyrandi þyngdir má sjá á mynd
+\ref{fig:sunglasses-weights-1}.
+
+\begin{figure}[h!]
+  \begin{center}
+    \includegraphics[width=\linewidth]{sunglasses-error-1.pdf}
+  \end{center}
+  \caption{1000 ítranir, $\eta=0.1, \mu=0.3$. Flokkarnir \emph{sunglasses} og
+  \emph{open}}
+  \label{fig:sunglasses-error-1}
+\end{figure}
+\begin{figure}[h!]
+  \begin{center}
+    \includegraphics[width=0.25\linewidth,angle=-90]{sunglasses-w0-1.pdf}
+    \includegraphics[width=0.25\linewidth,angle=-90]{sunglasses-w1-1.pdf}
+  \end{center}
+  \caption{1000 ítranir, $\eta=0.1,\mu=0.3$. Flokkar \emph{sunglasses} og
+  \emph{open}. Í ljósi þess að við viljum þekkja
+  sólgleraugu, þá er þetta eðlilegra en þegar teknar voru 8000 ítranir
+  (ljósir blettir við augun).}
+  \label{fig:sunglasses-weights-1}
+\end{figure}
+
+
+\subsection{Að læra alla 10 flokkana}
+
+Reynum nú að láta tauganetið læra alla 10 flokkana í einu. Fyrsta
+tilraun verður þannig:
+\begin{itemize}
+  \item Lægsta upplausn, 30 raðir og 32 dálkar í mynd.
+  \item Eitt 10-hnúta millilag.
+  \item 8000 ítranir.
+  \item $\eta = 0.1$, $\mu=0.3$.
+  \item 70\% úrtaks, 437 myndir, til þjálfunar; 30\%, 187 myndir, til
+    prófunar.
+\end{itemize}
+Þróun skekkjunnar má sjá á mynd \ref{fig:all-error} og þyngdirnar á mynd
+\ref{fig:all-weights}. Rétt eins og í síðustu undirgrein sjáum við að
+við fórum allt of margar ítranir, því prófunarskekkjan staðnar
+greinilega (fyrir utan sveiflur) eftir um 1000 ítranir, og þyngdirnar
+bera merki þess að reyna að læra of flókin mynstur (t.d. fá axlir vægi,
+sem er óeðlilegt).
+
+Prófum nú á móti að fara 1000 ítranir við annars sömu skilyrði.
+Niðurstöðurnar eru á myndum \ref{fig:all-error-1} og
+\ref{fig:all-weights-1}. 
+
+\begin{figure}[h!]
+  \begin{center}
+    \includegraphics[width=\linewidth]{all-error.pdf}
+  \end{center}
+  \caption{8000 ítranir, $\eta=0.1,\mu=0.3$. Allir flokkar. Sjáum að við
+  byrjum að oflæra strax upp úr 1000 ítrunum.}
+  \label{fig:all-error}
+\end{figure}
+\begin{figure}[h!]
+  \begin{center}
+    \begin{tabular}{ccccc}
+      \includegraphics[width=0.12\linewidth,angle=-90]{all-w0.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w1.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w2.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w3.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w4.pdf}
+      \\
+      \includegraphics[width=0.12\linewidth,angle=-90]{all-w5.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w6.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w7.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w8.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w9.pdf}
+    \end{tabular}
+  \end{center}
+  \caption{8000 ítranir, $\eta=0.1,\mu=0.3$. Allir flokkar. Gera má sér í
+  hugarlund að myndin efst til vinstri gefi þeim sem horfa til vinstri
+  meira vægi, og eins að myndin hægra megin við hana, gefi þeim vægi sem horfa
+  til áfram. Mynstrin eru þó frekar óskýr og netið er greinilega að
+  oflæra.}
+
+  \label{fig:all-weights}
+\end{figure}
+
+
+\begin{figure}[h!]
+  \begin{center}
+    \includegraphics[width=\linewidth]{all-error-1.pdf}
+  \end{center}
+  \caption{1000 ítranir, $\eta=0.1,\mu=0.3$. Allir flokkar.}
+  \label{fig:all-error-1}
+\end{figure}
+\begin{figure}[h!]
+  \begin{center}
+    \begin{tabular}{ccccc}
+        \includegraphics[width=0.12\linewidth,angle=-90]{all-w0-1.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w1-1.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w2-1.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w3-1.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w4-1.pdf}
+      \\
+        \includegraphics[width=0.12\linewidth,angle=-90]{all-w5-1.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w6-1.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w7-1.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w8-1.pdf}
+      & \includegraphics[width=0.12\linewidth,angle=-90]{all-w9-1.pdf}
+    \end{tabular}
+  \end{center}
+  \caption{1000 ítranir, $\eta=0.1,\mu=0.3$. Allir flokkar.}
+  \label{fig:all-weights-1}
+\end{figure}
+
+\subsection{Túlkun á niðurstöðum}
+
+Með því að skoða þyngdirnar á myndum \ref{fig:sunglasses-error-1} og
+\ref{fig:all-error-1} nánar þá sjáum við að netið virðist fyrst og
+fremst læra öfgapunkta, þ.e. mjög ljósa og mjög dökka punkta, í myndunum
+sem uppfylla jafnframt það skilyrði að vera frekar svipaðir í gegn um
+dæmin, með auknu vægi á þá punkta sem hafa fylgni með
+réttum-úttaksgildum. Til dæmis er húðliturinn almennt ljós og afmarkar
+útlínur höfuðsins, sem er fylgist að með stefnu höfuðs, svo við fáum
+almennt eitthvað sem líkist höfði á þyngdirnar. 
+
+Eins, þá eru sólglerugun áberandi dökk miðað við annars frekar ljóst
+svæði við gleraugnalaus augu, svo við ættum að fá frekar sterkan mun
+milli augnsvæðisins og umhverfisins. Það er vissulega svo á mynd
+\ref{fig:sunglasses-error-1}, en sú mynd líður þó fyrir það að
+\emph{sólgleraugun færast til með stefnu höfuðsins}. Til að undirstrikra
+þessa fylgni, sjá mynd \ref{fig:sunglasses-straight}, sem sýnir hversu
+mikið auðveldara verkefnið verður þegar við takmörkum
+sólgleraugnaverkefnið við andlit sem snúa beint áfram. Reyndar bendir
+þetta líka til þess að við gætum e.t.v. notað sólgleraugnaflokkinn til
+að hjálpa netinu að læra hvernig höfuðið á myndinni snýr (því hann kemur
+svo sterkur og staðbundinn inn).
+
+Að lokum, athugum að netinu gengur afskaplega illa að læra svipbrigðin á
+myndunum; við því var þó að búast vegna þess að upplausnin í myndunum er
+lítil, gildin í punktunum með svipbrigðum dreifast yfir stóran hluta
+$[0,1]$, og netið lærir óháð röð punkta í myndinni (svo okkur gengur
+alveg eins hvernig sem við umröðum punktunum, svo lengi sem breytingni
+varðveitist milli mynda).
+
+\begin{figure}[h!]
+  \begin{center}
+    \includegraphics[width=\linewidth]{sunglasses-straight-error.pdf}
+    \\
+    \includegraphics[angle=-90,width=0.25\linewidth]{sunglasses-straight-w0.pdf}
+    \includegraphics[angle=-90,width=0.25\linewidth]{sunglasses-straight-w1.pdf}
+  \end{center}
+  \caption{Sólgleraugnaverkefnið þar sem úrtakið er takmarkað við andlit
+  sem snúa beint áfram. Netið er fljótara að læra (bara 1000 ítranir að
+  komast niður fyrir 0.1 í þjálfunarskekkju) og það gefur eðlilegri þyngdir
+  m.t.t. verkefnisins (nánast bara sólgleraugun fá vægi). }
+  \label{fig:sunglasses-straight}
+\end{figure}
+
+\subsection{Lágmörkun á prófunarskekkju}
+
+Athugum að það, að reyna að tákna myndirnar með gildum úr $[0,1]$
+þannig að 0 er nei og 1.0 er já, er ekki endilega ekki. Við höfum
+nefnilega einhalla færslufallið $h$ sem uppfyllir $h(x)\to 0$ þegar
+$x\to -\infty$ og $h(x)\to 1$ þegar $x\to+\infty$; svo til að komast sem
+næst þeim gildum gætum við lent í að klemma gildin í $\mathbf w$ við
+$\pm\infty$. Með því að nota annað skekkjumat en cross-entropy kæmi til
+greina að láta gildin dreifast á bilið $[0.1,0.9]$, því það eru gildi
+sem $h$ getur náð í endanlegum stærðum. Með cross-entropy kæmi það hins
+vegar ekki til greina, því við erum háð $h$ í frumstillingu $\delta_k$.
+Reyndar vill líka svo til að þyngdirnar okkar verða ekki svo stórar í
+dæmunum að ofan (þrátt fyrir hættuna á því). Önnur leið væri að búa til
+nýtt skekkjumat 
+\[ 
+G(\mathbf w ) = \alpha E(\mathbf w) + \beta M(\mathbf w)
+\]
+þar sem $M(\mathbf w)$ er svokallaður \emph{regularizer}, sem gegnir því
+hlutverki að halda þyngdunum í skefjum. Ekki gafst tími til að kanna
+þessar hugmyndir nánar.
+
+\subsection{Varðandi önnur gildi á $\eta$, $\mu$ o.fl.}
+
+Fleiri gildi á öllum stikum voru prófuð við gerð verkefnisins en
+niðurstöðurnar ekki geymdar og því ekki settar fram hér. Almennt virðist
+sem hærri gildi á $\eta$ gefi hraðari samleitni upp að vissu marki, en
+örar og háar sveiflur koma fram í bæði þjálfunar- og prófunarskekkju
+eftir því sem $\eta$ eykst. Að lokum hættir netið að geta
+lært og skekkjan helst föst í upphafsgildi. Þannig er hægt að ná fram
+svipaðri samleitni og í 8000 ítrunum fyrir $\eta=0.1,\mu=0.3$ að ofan, í 2000  
+ítrunum fyrir svolítið hærri gildi á $\eta$, en samleitnin verður
+óstöðug á köflum. Skriðþunginn $\mu$ virðist hjálpa til við samleitni í
+tilfellum þegar $\eta$ er mjög lítið og jafnvel geta minnkað
+óreiðukenndar sveiflur í skekkju, en að sama skapi getur hann gert illt
+verra fyrir stærri $\eta$. Varðandi millilög netsins, þá fengust bestu
+niðurstöðurnar með því að hafa eitt millilag með jafnmörgum hnútum og
+flokkarnir sjálfir; annars gekk ágætlega að leysa t.d.
+sólgleraugnaverkefnið með engu millilagi. Ekki var betra að bæta við
+fleiri lögum, en þar kenni ég þó um skorti á \emph{regularizer} fyrir
+skekkjuna (fallið $M$ úr seinustu undirgrein); enda hefur tauganet með
+fleiri lögum meira \emph{minni}, þ.e. getur lært fleiri og flóknari hluti.
+
+\appendix
+
+
+\section{\texttt{vbp.m} með cross-entropy}
+\verbatiminput{vbp.m}
+
+\section{XOR-prófið}\label{sec:xor-test}
+\verbatiminput{test_vbp_xor.m}
+
+\section{VBP útfært í C}
+Virkar í GCC-4.4 og ICC-12.0.0 á nýlegu Ubuntu. Þarf útfærslu á BLAS
+\cite{blas} til
+að keyra.
+
+
+\subsection{Skilgreiningaskjalið \texttt{hfy\_vbp.h}}
+\verbatiminput{hfy_vbp.h}
+
+\subsection{Útfærsluskjalið \texttt{hfy\_vbp.c}}
+\verbatiminput{hfy_vbp.c}
+
+\section{Keyrsluforrit fyrir andlitsprófin}
+Til að keyra forritin þarf nýlega útgáfu libnetpbm \cite{netpbm} auk
+\texttt{hfy\_vbp} ofan. Forritin má t.d. þýða með
+\begin{verbatim}
+cc -O3 hfy_loadfaces.c hfy_vbp.c -lblas -lnetpbm -o loadfaces 
+\end{verbatim}
+fyrir gcc, clang o.fl. á móti atlas í ubuntu; eða
+\begin{verbatim}
+icc -fast hfy_loadfaces.c hfy_vbp.c -mkl -lnetpbm -o loadfaces 
+\end{verbatim}
+fyrir icc á móti mkl.
+
+\subsection{Útfærsluskjalið \texttt{hfy\_loadfaces.c}}
+\verbatiminput{hfy_loadfaces.c}
+
+\begin{thebibliography}{99}
+  \bibitem{faces} \url{http://kdd.ics.uci.edu/databases/faces/faces.html}
+  \bibitem{blas} \url{http://netlib.org/blas}
+  \bibitem{netpbm} \url{http://netpbm.sf.net}
+\end{thebibliography}
+\end{document}
+
