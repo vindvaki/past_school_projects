@@ -1,0 +1,22 @@
+; keyrslufall einingarinnar
+(define (main)
+  ; skilgreiningar með hliðarverkunum
+  (define m1 (print (++ "fib " (fib 100))))
+  (define m2 (print (++ "gcd " (gcd 10 100))))
+  ; erum búin
+  (exit 0))
+
+; stærsti samdeilir náttúrlegra talna a og b
+(define (gcd a b)
+  (if (== b 0)
+    a
+    (gcd b (% a b))))
+
+; n-ta Fibonacci talan
+(define (fib n) 
+  ; halaendurkvæmt innra fall fyrir ítrun
+  (define (iter m a b)
+    (if (== m n)
+      b
+      (iter (+ m 1) b (+ a b))))
+  (iter 1 1 1))

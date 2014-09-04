@@ -1,0 +1,506 @@
+\documentclass[a4paper,icelandic]{article}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{babel}
+
+\usepackage[unicode=true, pdfusetitle,
+ bookmarks=true,bookmarksnumbered=false,bookmarksopen=false,
+ breaklinks=false,pdfborder={0 0 1},backref=false,colorlinks=false]
+ {hyperref}
+
+\usepackage{amsmath}
+
+\usepackage{enumerate}
+
+% Fyrir mállýsingar
+\usepackage[rounded]{syntax}
+%\grammarindent=5.3em
+
+% Fyrir kóða
+\usepackage{verbatim}
+
+\title{Handbók fyrir Schmorpho}
+\author{Hörður Freyr Yngvason}
+
+\begin{document}
+\maketitle
+
+\section{Inngangur}
+Fyrir áfangann Þýðendur (TÖL202M), vorönn 2010, átti hanna
+forritunarmál og búa til þýðanda frá málinu yfir í Morpho
+þulu. Afraksturinn var málið \emph{Schmorpho}, (nánast) hlutmengi af
+\textbf{Sch}eme í \textbf{Morpho}.
+
+Morpho þulan er forritunarmál m.a. sniðið í kring um vakningarfærslur til
+að keyra á Morpho vélinni \cite{morphodist}. Innbyggður stuðningur er
+við halaendurkvæmni og lokanir, sem gerir það að verkum að vélin er
+kjörin í keyrsluhluta fallsforritunarmáls. Markmið mitt í verkefninu
+var fyrst og fremst að \emph{eyða sem minnstri vinnu í þýðandann, en
+  fá um leið sem öflugast forritunarmál}. Það ætti því ekki að koma á
+óvart að stefnan hafi verið tekin á hlutmengi í Scheme. Nánar tiltekið
+einskorðaði ég mig við lykilorðin \verb|if| og \verb|define| en reyndi
+á móti að útfæra þau sem best. 
+
+\subsection{Dæmi um forrit}
+\label{sec:dami-um-forrit}
+
+Eftirfarandi kóða má þýða í keyrslueiningu með aðalfall
+\verb|main|. Hjálparföll á borð við \verb|+|, \verb|++|,
+\verb|print| og \verb|%| eru flutt inn úr \verb|BASIS|
+einingunni í Morpho. 
+
+\verbatiminput{examples/fibgcd.schmo}
+
+\section{Notkun og uppsetning}
+Fyrir utan Morpho útgáfuna \cite{morphodist} samanstendur
+  Schmorpho af skránum í töflu \ref{tab:skrar}.
+\begin{table}[h!]
+  \centering
+  \begin{tabular}{lp{0.7\linewidth}}
+    \hline 
+    \textbf{Skrá}        & \textbf{Hlutverk}\\\hline\hline 
+    \verb|lesgrein.l|    & Lesgreinir skrifaður í flex\cite{flex}    \\\hline 
+    \verb|thattari.y|    & þáttari skrifaður í Bison \cite{bison}    \\\hline 
+    \verb|CodeGen.h/cpp| & Klasasafn fyrir milliþulu\\\hline 
+    \verb|schmorpho-asm| & þulusmiðurinn. þarf að þýða sérstaklega.  \\\hline 
+    \verb|schmorpho|     & Einföld, stillanleg Bash-skripta sem tengir saman
+                           Schmorpho þulusmiðinn og Morpho þýðandann \\\hline 
+    \verb|makefile|      & \verb|make|-skrá sem notar GCC, flex og Bison
+                           \cite{gcc,flex,bison} til að framleiða þulusmiðinn,
+                           þ.e. forritið \verb|schmorpho-asm|        \\\hline
+  \end{tabular}
+  \caption{Lykilskrárnar í Schmorpho}
+  \label{tab:skrar}
+\end{table}
+Til að þýða þulusmiðinn má nota nýlega útgáfu af GCC, Flex og Bison,
+síðan nægir að nota \verb|make|-skrána í aðalmöppunni. Þá fæst
+keyrsluskráin \verb|schmorpho-asm| sem er þulusmiðurinn fyrir
+Schmorpho.  
+
+\subsection{Þulusmiðurinn \texttt{schmorpho-asm}}
+\label{sec:notkun-pulusmidarins}
+
+Þulusmiðurinn les Schmorpho-kóða af aðalinntaki og skrifar þulu á
+aðalúttak. Hægt er að þýða Schmorpho forritsskrá \verb|skrá.schmo| á
+þrjá vegu
+\begin{enumerate}
+\item
+\begin{verbatim}
+schmorpho-asm < skrá.schmo
+\end{verbatim}
+  Skrifar hráa þulu fyrir föllin í skránni án þess að setja þau í einingu.
+\item
+\begin{verbatim}
+schmorpho-asm nafn < skrá.schmo
+\end{verbatim}
+  Skrifar þulu fyrir hringtengda einingu með nafnið \verb|nafn.mmod|
+  og flytur inn \verb|BASIS| en er án keyrslufalls.
+\item
+\begin{verbatim}
+schmorpho-asm nafn aðalfall < skrá.schmo
+\end{verbatim}
+  Skrifar þulu fyrir hringtengda keyrslueiningu sem flytur inn
+  \verb|BASIS|, hefur nafnið \verb|nafn.mexe| og keyrslufallið
+  \verb|aðalfall|, sem verður að vera til staðar í \verb|skrá.schmo|.
+\end{enumerate}
+
+\section{Málfræði}
+\label{sec:malfradi}
+
+\subsection{Frumeiningar málsins}
+\label{sec:frumeiningar-malsins}
+
+\subsubsection{Sértákn}
+\label{sec:sertakn}
+Einu sértáknin eru svigar. Við notum aðeins venjulega sviga en tökum
+líka frá hornklofa og slaufusviga til að fyrirbyggja ruglingsleg nöfn.
+
+\subsubsection{Lykilorð}
+\label{sec:lykilord}
+Í málinu eru aðeins tvö lykilorð, \verb|define| og \verb|if|. Við
+notum \verb|define| til að skilgreina öll \emph{nöfn}, en \verb|if| er
+notað til að tákna val á milli tveggja ólíkra segða byggt á niðurstöðu
+samanburðarsegðar.
+
+\subsubsection{Athugasemdir}
+\label{sec:athugasemdir}
+Allt fyrir aftan \verb|;| í línu telst vera athugasemd. Athugasemdir
+eru hunsaðar við þýðingu.
+
+\subsubsection{Nöfn}
+\label{sec:nofn}
+Nöfn \synt{name} eru notuð til að vísa í föll og önnur gildi. Þau mega
+samanstanda af ýmis konar sértáknum, bókstöfum og tölustöfum, en mega
+ekki hefjast á tölustaf.
+\begin{grammar}
+  <name> ::=
+  \begin{syntdiag*}
+    \begin{stack}
+      <alpha>\\
+      <opchar>
+    \end{stack}
+    \begin{rep} \\
+      \begin{stack}
+        <alpha>\\
+        <opchar> \\
+        <digit>
+      \end{stack}
+    \end{rep}
+  \end{syntdiag*}
+
+  <alpha> ::= allir íslenskir stafir
+
+  <opchar> ::= `+' | `-' | `*' | `/' | `\%' | `\$' | `!' | `_' | `:' |
+  `|' \\ | `<' | `=' | `>' | `^' | `#' | `\&' | `?' | `@'
+\end{grammar}
+
+\subsubsection{Frumstæð gildi}
+\label{sec:frumstad-gildi-1}
+Hugmyndin er að nota nákvæmlega sömu frumstæðu gildin og Morpho
+þulan. Það eru Bool-gildi \synt{bool}, heiltölur \synt{integer},
+fleytitölur \synt{float}, bókstafir \synt{char} og strengir
+\synt{string} og \lit{null}.  Táknum öll frumstæð gildi einu nafni
+\synt{value}. Bool-gildi eru \lit{true} og \lit{false}; fleytitölur
+eru í tugakerfi, strengir eru safn stafa afmarkað af tvöföldum
+gæsalöppum og bókstafir eru stakir stafir innan einfaldra gæsalappa;
+\lit{null} er tóma tilvísunin í Morpho.  Nánar tiltekið höfum við
+\begin{grammar}
+  <value> ::= <bool> | <integer> | <float> | <char> | <string> |
+  \lit{null}
+
+  <bool> ::= \lit{true} | \lit{false}
+  
+  <integer> ::=
+  \begin{syntdiag*} \begin{rep} <digit> \end{rep} \end{syntdiag*}
+
+  <digit> ::= 0 | 1 | 2 | 3 | 5 | 6 | 7 | 8 | 9
+
+  <float> ::=
+  \begin{syntdiag*}
+    \begin{stack}
+      <integer> `.'
+      \\
+      <integer> `.' <integer>
+      \\
+      `.' <integer>
+    \end{stack}
+  \end{syntdiag*}
+
+  <char> ::= \begin{syntdiag*}`\'' <char\_v> `\''\end{syntdiag*}
+
+  <string> ::=
+  \begin{syntdiag*}
+    `"'
+    \begin{rep}
+      <char\_v>
+    \end{rep}
+    `"'
+  \end{syntdiag*}
+
+  <char\_v> ::=
+  \begin{syntdiag*}
+    \begin{stack}
+      \tok{allir stafir nema `\''}\\
+      `\\' `\'' \\
+      `\\' `\\' \\
+      `\\' `n' \\
+      `\\' `r' \\
+      `\\' `t' \\
+      `\\' `b' \\
+      `\\' `f' \\
+      `\\' <octal> \\
+      `\\' <octal> <octal> \\
+      `\\'
+      \begin{stack}
+        `0' \\
+        `1' \\
+        `2' \\
+        `3'
+      \end{stack}
+      <octal> <octal>
+    \end{stack}
+  \end{syntdiag*}
+
+  <octal> ::= 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7
+\end{grammar}
+
+\subsection{Mállýsing}
+\label{sec:mallysing}
+
+Hér má sjá sömu mállýsingu og þáttarinn notar, nema á
+hreinu BNF-formi og án hliðarverkana sem þulusmíðin felur í sér.
+\begin{grammar}
+  <program> ::= $\epsilon$ | <program> <defun>
+  
+  <defun> ::= `(' `define' `(' <name> <args> `)' <body> `)'
+  
+  <defvar> ::= `(' `define' <name> <expr> `)'
+  
+  <args> ::= $\epsilon$ | <args> <name>
+  
+  <body> ::= <expr>
+  \alt <defuns> <expr>
+  \alt <defvars> <expr>
+  \alt <defuns> <defvars> <expr>
+  
+  <defuns> ::= <defun> | <defuns> <defun>
+  
+  <defvars> ::= <defvar> | <defvars> <defvar>
+  
+  <exprs> ::= $\epsilon$ | <exprs> <expr>
+  
+  <expr> ::= <cexrp> | <vexpr>
+  
+  <cexpr> ::= `(' <name> <exprs> `)'
+  \alt `(' <cexpr> <exprs> `)'
+  \alt `(' `if' <expr> <expr> <expr> `)'
+  
+  <vexpr> ::= <name> | <value>
+\end{grammar}
+
+\section{Merking málsins}
+\label{sec:merking-malsins}
+
+\subsection{Schmorpho forrit}
+\label{sec:schmorpho-forrit}
+
+Schmorpho forrit, \synt{program}, er runa skilgreininga á föllum,
+\synt{defun}, sem mynda saman eina einingu í Morpho. Venjulega látum
+við eininguna vera hringtengda til að líkja eftir virkni Scheme, en
+ef engin viðföng eru send inn í þulusmiðinn fæst einfaldlega runa
+falla, sem er ekki sett inn í einingu (þ.e. ekki umlukin tvöföldum
+slaufusvigum). 
+
+\subsection{Skilgreiningar}
+\label{sec:skilgreiningar}
+
+Skilgreiningar í mállýsingunni eru táknaðar með \synt{defun} fyrir
+föll og \synt{defvar} fyrir breytur.
+Skilgreining er ekki gildi, heldur gefur hún gildi eða útfluttu
+falli nafn. Skilgreiningin \synt{defun} í \synt{program} er
+t.d. skilgreining á útfluttu falli, en \synt{defun}  í stofni falls,
+\synt{body}, skilgreinir innra fall (lokun) í foreldri sínu.
+
+\subsubsection{Skilgreiningar á föllum}
+\label{sec:skilgr-foll}
+
+Föll eru skilgreind með
+\begin{grammar}
+  <defun> ::= `(' `define' `(' <name> <args> `)' <body> `)'
+\end{grammar}
+hvort sem þau standa fyrir innra eða ytra fall. Munurinn á innri og
+ytri föllum er sá, að nöfn innri falla eru líka breytur með gildi, sem
+er lokunin fyrir fallið, á meðan nöfn ytri falla standa ekki fyrir
+nein gildi (sjá nánar í hluta \ref{sec:gildi}).  Í skilgreiningu falls
+er \synt{name} nafn þess, \synt{args} listi nafna viðfanga þess (núll
+eða fleiri) og \synt{body} stofn þess. Stofninn er þannig, að fyrst
+koma skilgreiningar allra innri falla, síðan allar
+breytuskilgreiningar, og loks ein segð, sem er skilagildi fallsins,
+þ.e.
+\begin{grammar}
+  <body> ::=
+  \begin{syntdiag*}
+    \begin{rep}
+      \\
+      <defun>
+    \end{rep}
+    \begin{rep}
+      \\
+      <defvar>
+    \end{rep}
+    <expr>
+  \end{syntdiag*}
+\end{grammar}
+Jafngild, en aðeins flóknari lýsing er í mállýsingunni
+(\ref{sec:mallysing}), þar eð taka þurfti tillit til viðvarana frá
+Bison um árekstra. 
+
+\subsubsection{Breytuskilgreiningar}
+\label{sec:breytuskilgreiningar}
+Skilgreiningar af gerðinni
+\begin{grammar}
+  <defvar> ::= `(' `define' <name> <expr> `)'
+\end{grammar}
+skilgreina breytunafnið \synt{name} þannig að það standi fyrir gildi
+segðarinnar \synt{expr}. Þær geta ekki verið endurkvæmar.
+
+\subsection{Sýnileiki nafna}
+\label{sec:synileiki-nafna}
+
+Innri föll eru líka kölluð \emph{földuð föll} og fjöldi skilgreininga
+utan um faldað fall er \emph{földunarhæð þess}. Í skilgreiningu falls
+lítum við svo á, að viðföngin \synt{args} og innihald stofnsins
+\synt{body} séu á sömu földunarhæð og einni földunarhæð fyrir neðan
+nafn fallsins, \synt{name}. Ystu föll eru á földunarhæð 0 og við lítum
+svo á að þar séu engin nöfn. Við leyfum skilgreiningu nafns, svo lengi
+sem það er ekki þegar til á földunarhæð sinni, en nöfn eru tekin frá í
+þeirri röð sem þau koma fyrir á hverri földunarhæð. Aftur á móti er
+leyfilegt að endurskilgreina nafn af ytri földunarhæð, en þá er engin
+leið að nálgast það aftur á þeirri og innri hæðum. \footnote{Reyndar
+  er ekkert gert til að fyrirbyggja tvískilgreiningu nafns á sömu
+  földunarhæð. Tilvísunin týnist í breytutöflu \emph{þýðandans}, en
+  gildið lifir enn í tilheyrandi vakningarfærslu og \emph{lekur minni},
+  þar sem ruslasafnarinn mun halda að það sé í notkun lengur en þarf.}
+
+Örlítið flóknari (en afskaplega eðlilegar) reglur gilda, um notkun
+nafna. Í hvert sinn sem við sjáum vísað í nafn, þá lítum við svo á að
+nafnið standi fyrir \emph{nálægustu sýnilegu skilgreiningu nafnsins}.
+\begin{enumerate}
+\item Við sjáum ekkert af innri hæðum.
+\item Nöfn viðfanga, þ.e. \synt{args}, eru sýnileg alls staðar á sinni
+  földunarhæð
+\item Öll föll, sem skilgreind eru á sömu földunarhæð með
+  skilgreiningu af gerðinni \synt{defun} eru sýnileg alls staðar á
+  sinni földunarhæð, sér í lagi sín á milli.
+\item Aðrar breytur, þ.e. allt skilgrent í \synt{defvar} hluta stofns,
+  eru sýnilegar í þeirri röð sem þær eru skilgreindar en ósýnilegar
+  sjálfum sér og öllu á undan sér.
+\item Ef nafn er sýnilegt á földunarhæð tilvísunarinnar með tilliti
+  til uppruna hennar (úrskurðað með 1-4), þá er sú skilgreining
+  nálægust. Annars lítum við á umlykjandi fall sem \emph{uppruna}
+  tilvísunarinnar og leitum aftur á földunarhæð þess. Ef við lendum á
+  földunarhæð 0, þá þýðir það að nafnið er innflutt og verður að vera
+  notað sem fall (þ.e. ekki gildi).
+\end{enumerate}
+Reglur 3 og 5 gefa saman að föll á sömu földunarhæð geta verið
+innbyrðis endurkvæm, sér í lagi getur fall kallað endurkvæmt á sjálft
+sig. Aftur á móti geta breytuskilgreiningar af gerðinni \synt{defvar}
+ekki verið endurkvæmar.
+
+
+
+\subsection{Gildi og segðir}
+\label{sec:gildi}
+Nú þegar við höfum rætt um skilgreiningar, þá er nauðsynlegt að vita
+hvað telst til gilda í málinu. Gildi og segðir eru sami hluturinn í
+Schmorpho. Þ.e. allar segðir eru gildi, og öll gildi eru segðir. Við
+táknum segðir með \synt{expr} í mállýsingunni og skiptum þeim upp í
+tvo flokka, \synt{vexpr} og \synt{cexpr}. Við getum hugsað okkur að
+\synt{cexpr} séu segðir sem þarf að reikna og \synt{vexpr} séu gildi
+sem búið er að reikna. Meginástæðan fyrir þessari flokkun er þó sú, að
+kall á fall getur verið tvenns konar, þ.e. kall á innflutt fall eða
+kall á lokun. Það þýðir að fyrir kall af gerðinni
+\begin{syntdiag*}
+  `(' <name> <exprs> `)' 
+\end{syntdiag*}
+þurfum við að kanna hvort \synt{name} er innflutt nafn. Með flokkuninni
+á \synt{expr} getum við merkt þessi vafatilfelli strax í þáttun, sem
+getur einfaldað þýðingu til muna.
+
+\subsubsection{Frumstæð gildi}
+\label{sec:frumstad-gildi}
+Frumstæð gildi \synt{value}, þ.e. bool-gildi, heiltölur, fleytitölur, strengir og
+stafir ásamt \verb|null| eru sér í lagi gildi/segðir. Sjá nánar í hluta
+\ref{sec:frumeiningar-malsins}.
+
+\subsubsection{Breytur}
+\label{sec:breytur-3}
+Breytur eru nöfn, \synt{name}, sem standa fyrir gildi. Allar breytur eru nöfn
+(sjá hluta \ref{sec:frumeiningar-malsins}), en sum nöfn eru ekki
+breytur (sjá nánar \ref{sec:koll-foll} og \ref{sec:lokanir}). Þótt við
+tölum um \emph{breytur} þá bjóðum við ekki sérstaklega upp á neinar
+aðgerðir til að breyta gildinu sem breytunöfn standa fyrir. Mælst er til þess að
+forrita sem mest án slíkra hliðarverkana, en það þó ekki bannað og auðvelt að
+flytja inn föll sem valda hliðarverkunum.
+
+\subsubsection{If-segðir}
+\label{sec:if-segdir}
+
+If-segðir í Schmorpho eru á forminu
+\begin{grammar}
+  <ifexpr> ::= `(' `if' <cond> <then> <else> `)'
+\end{grammar}
+þar sem \synt{cond}, \synt{then} og \synt{else} eru
+\synt{expr}. Segðin \synt{cond} er ákvarðanatökusegð: Ef útkoma hennar
+er önnur en \verb|false| eða \verb|null|, þá fær \synt{ifexpr} gildið
+\synt{then} en annars \synt{else}.
+
+\subsubsection{Köll á föll}
+\label{sec:koll-foll}
+Köll á föll gefa alltaf eitthvert gildi, þótt útkoman geti verið
+óskilgreind; t.d. látum við liggja á milli hluta hvert gildi
+segðarinnar \verb|(print "Halló")| er. Köll á föll eru af gerðinni
+\begin{grammar} <funcall> ::=
+  \begin{syntdiag*} `('
+    \begin{stack} <name> \\ <cexpr>
+    \end{stack} <exprs> `)'
+  \end{syntdiag*}
+\end{grammar}
+þar sem \synt{name} er nafn fallsins (lokun eða innflutt),
+\synt{cexpr} er lokun fyrir fallið og \synt{exprs} er runa þeirra
+gilda sem fallið tekur sem viðföng. Þetta þýðir sér í lagi að
+\emph{öll viðföng eru gildisviðföng}. Við segjum að nafn eða fall sé
+\emph{innflutt} ef það er notað eins og fall, en er hvergi skilgreint
+þar sem kallið getur \emph{séð} það. Til eru óleyfileg köll, sem þó
+uppfylla málritið, t.d. getur útkoman úr \synt{cexpr} verið \verb|1|,
+sem er ekki fall. Slíkar villur koma ekki fram fyrr en hugsanlega í
+Morpho-hluta þýðingar/keyrslu.
+
+\paragraph{Halaendurkvæmni}
+\label{sec:halaendurkvamni}
+
+Seinasta segðin í stofni falls er alltaf skilagildi þess, svo ef hún
+er kall á fall, þá má það kall vera halaendurkvæmt. Þetta gefur okkur
+skilvirka leið til að ítra án þess að nota lykkjur. Dæmi um þetta má
+sjá í greinum \ref{sec:dami-um-forrit} og \ref{sec:fleiri-dami-um}.
+
+\subsubsection{Lokanir}
+\label{sec:lokanir}
+Í Schmorpho eru öll innri föll lokanir, en \emph{innflutt föll eru það
+  ekki}.  Það þýðir að ekki er hægt að senda innflutt fall sem viðfang
+í annað fall, né láta innri breytu standa fyrir innflutt fall. Aftur á
+móti er hægt að búa til lokun, sem kallar á innflutt fall og láta
+innflutt fall skila lokun. T.d.
+\begin{verbatim}
+(define (kósínus)
+  ;; Dæmi 1
+  (define g cos)           ;; Rangt! cos er innflutt.
+  (define (g x) (cos x))   ;; Rétt! g er lokun jafngild cos.
+  ;; Dæmi 2
+  (define (e fun) (fun x)) ;; Gildistökuvörpun
+  (define h (e cos))       ;; Rangt! cos hefur ekki gildi
+  (define h (e g))         ;; Rétt! g er lokun
+  g)                       ;; skilum g, sem er lokun
+
+;; Dæmi 3
+(define (kósínus-af-0) 
+  (define f (kósínus)) ;; gildið er lokun sem er jafngild cos
+  (f 0))
+\end{verbatim}
+
+\subsubsection{ Hlutir og önnur gildi úr Morpho}
+\label{sec:hlutir-og-onnur}
+Schmorpho er langt því frá að nýta allar mögulegar aðgerðir Morpho
+þulunnar. Til dæmis styður Morpho þulan hlutbundna forritun en ekki
+Schmorpho. Hins vegar væri hægt að flytja inn slíka hluti og fela þá á
+bak við föll, þannig að Schmorpho geti notið góðs af þeim. 
+
+\section{Fleiri dæmi um forrit}
+\label{sec:fleiri-dami-um}
+
+\subsection{Listaföll eins og í Scheme}
+\label{sec:listafoll-eins-og}
+
+Í venjulega Schmorpho notum við föllin í \verb|BASIS| beint.  Hér
+er dæmi um hvernig nota mætti aðeins eitt fall úr \verb|BASIS|, nefnilega
+\verb|==|, til þess að útfæra listaföllin \verb|cons|, \verb|car|,
+\verb|cdr|, \verb|map| og \verb|foldl|. Við erum örlítið takmörkuð af
+því að hafa ekkert \verb|list| fall; í staðinn notum við \verb|cons|
+ítrekað og samsömum \lit{null} við tóman lista.
+
+\verbatiminput{examples/cons.schmo}
+
+
+
+\begin{thebibliography}{4}
+\bibitem{morphodist}Snorri Agnarsson. Morpho þýðandinn og keyrsluumhverfið.\\
+  \href{http://morpho.cs.hi.is/}{http://morpho.cs.hi.is/}
+\bibitem{bison}Bison - GNU parser generator. \\
+  \href{http://www.gnu.org/software/bison/}{http://www.gnu.org/software/bison/}
+\bibitem{flex}flex: The Fast Lexical Analyzer. \\
+  \href{http://flex.sourceforge.net/}{http://flex.sourceforge.net/}
+\bibitem{gcc}GCC, the GNU Compiler Collection.\\
+  \href{http://gcc.gnu.org/}{http://gcc.gnu.org/}
+\end{thebibliography}
+
+\end{document}

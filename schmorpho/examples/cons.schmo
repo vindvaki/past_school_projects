@@ -1,0 +1,58 @@
+;; Ein leið til að búa til listaföll í Schmorpho sem
+;; hegða sér svipað og tilsvarandi Lisp/Scheme föll.
+
+(define (null? x) (== null x)) ; er tómur?
+
+; Gildið er lokun f þ.a. (f true) = x, (f false) = xs og (f null) = lengdin
+; Krefjumst þess að xs sé svona par eða null, þar sem
+; null stendur fyrir tóman lista.
+(define (cons x xs)
+  (define (get i) (if i x xs))
+  get)
+
+(define (car xs) (xs true))  ; fremsta stak lista
+(define (cdr xs) (xs false)) ; hali lista
+(define (length xs)          ; lengd lista
+  (define (iter n ys)
+    (if (null? ys)
+      n
+      (iter (+ n 1) (cdr ys))))
+  (iter 0 xs))
+
+; viðsnúinn listi
+(define (reverse xs)
+  (define (iter ys zs)
+    (if (null? ys)
+        zs
+        (iter (cdr ys) (cons (car ys) zs))))
+  (iter xs null))
+
+; framkvæma fall f á öll stök lista xs
+(define (map f xs)
+  (define (iter ys zs)
+    (if (null? ys)
+      zs
+      (iter (cdr ys) (cons (f (car ys)) zs))))
+  (iter (reverse xs) null))
+
+; framkvæma tvíundaraðgerð ítrekað með vinstri tengingu
+(define (foldl f u xs)
+  (if (null? xs) u (foldl f (f u (car xs)) (cdr xs))))
+
+;; Lok útfærslu. Eftirfarandi eru prófunarföll
+
+; Hjálparfall til að fá strengframsetningu lista
+(define (show xs)
+  (define (concat a b) (++ a (++ " " b)))
+  (concat (foldl concat "(" xs) ")"))
+
+; Skrifar strengina "( 1 2 3 4 )" og "( 1 4 9 16 )",
+; hvorn í sína línuna, á aðalúttak.
+(define (main)
+  (define (sqr x) (* x x))
+  (define xs (cons 1 (cons 2 (cons 3 (cons 4 null)))))
+  (define ys (map sqr xs))
+  (define m1 (print (show xs)))
+  (define m2 (print (show ys)))
+  (define m3 (writeln (length xs)))
+  (exit 0))

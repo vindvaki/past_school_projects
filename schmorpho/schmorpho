@@ -1,0 +1,14 @@
+#!/bin/bash
+
+# Samsuða af schmorpho-asm og morpho-þýðandanum
+# Býr til þýdda keyrslueiningu sem gerir ráð fyrir
+# að keyrslufall |main| sé til staðar í forritinu.
+
+# Slóðin í Morpho útgáfuna
+MORPHO_JAR=morpho.jar
+# Slóðin í schmorpho-þulusmiðinn
+SCHMORPHO_ASM=schmorpho-asm
+
+namelen=`expr $1 : '.[^.]*'`
+name=${1:0:${namelen}}
+./${SCHMORPHO_ASM} ${name} main < $1 | java -jar ${MORPHO_JAR} -c
